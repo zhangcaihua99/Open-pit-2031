@@ -9,7 +9,6 @@ const App = {
     deleteStore: null,
     deleteScreen: null,
     exportContext: null,
-    dataViewSource: null, // 'main' or 'screen' — tracks which data view to refresh after delete
     // Temporary form data
     openpit: { qrCode: '', photo: '' },
     stockpile: { qrCode: '', photo: '' },
@@ -29,7 +28,6 @@ const App = {
     this.bindModals();
     this.bindExportTab();
     this.bindBackupRestore();
-    this.bindMainDataManagement();
     this.bindUpdateCheck();
     this.registerSW();
     this.requestPersistentStorage();
@@ -287,6 +285,8 @@ const App = {
       this.showExportModal();
     });
 
+    document.getElementById('sp-export-hcc').addEventListener('click', () => this.exportStockpileHCC());
+
     document.getElementById('sp-delete').addEventListener('click', () => {
       this.state.deleteStore = DB.STORES.stockpile;
       this.state.deleteScreen = 'stockpile';
@@ -341,6 +341,44 @@ const App = {
     this.state.stockpile.photo = '';
 
     Utils.toast('数据上传成功!<br><span class="en">Data submitted!</span>', 'success');
+  },
+
+  /**
+   * Export stockpile data in HCC format:
+   * DATE = Shift_Date, equipe = Shift (Day=1, Night=2),
+   * N°CAMION = Vehicle No., HEURE = Timestamp time (H:MM)
+   */
+  async exportStockpileHCC() {
+    let records = await DB.getAll(DB.STORES.stockpile);
+    if (records.length === 0) {
+      Utils.toast('没有数据可导出<br><span class="en">No data to export</span>', 'error');
+      return;
+    }
+    records.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    const hccHeaders = [
+      { key: 'date', label: 'DATE' },
+      { key: 'equipe', label: 'equipe' },
+      { key: 'vehicleNo', label: 'N°CAMION' },
+      { key: 'heure', label: 'HEURE' }
+    ];
+
+    const hccRecords = records.map(r => {
+      const dt = r.timestamp ? new Date(r.timestamp) : null;
+      const heure = dt
+        ? dt.getHours() + ':' + String(dt.getMinutes()).padStart(2, '0')
+        : '';
+      const shiftNorm = Utils.normalizeShift(r.shift);
+      return {
+        date: r.date || '',
+        equipe: shiftNorm === 'Day' ? 1 : (shiftNorm === 'Night' ? 2 : ''),
+        vehicleNo: r.vehicleNo || '',
+        heure: heure
+      };
+    });
+
+    Exporter.toExcel(hccRecords, hccHeaders, 'HCC_Stockpile_' + Utils.getTimestampStr());
+    Utils.toast('HCC导出成功! 共' + hccRecords.length + '条<br><span class="en">HCC Exported! ' + hccRecords.length + ' records</span>', 'success');
   },
 
   // ==================== Transfer Screen ====================
@@ -858,7 +896,6 @@ const App = {
 
   // ==================== Data View ====================
   async showDataView(storeKey, headers, title) {
-    this.state.dataViewSource = 'screen';
     const storeMap = {
       openpit: DB.STORES.openpit,
       stockpile: DB.STORES.stockpile,
@@ -933,26 +970,21 @@ const App = {
       };
       await DB.remove(storeMap[storeKey], id);
       Utils.toast('删除成功!<br><span class="en">Deleted!</span>', 'success');
-      // Refresh the correct data view based on source
-      if (this.state.dataViewSource === 'main') {
-        this.loadMainDataView();
-      } else {
-        const headersMap = {
-          openpit: this.getOpenPitHeaders(),
-          stockpile: this.getStockpileHeaders(),
-          transfer: this.getTransferHeaders(),
-          breakdown: this.getBreakdownHeaders(),
-          parking: this.getParkingHeaders()
-        };
-        const titlesMap = {
-          openpit: '采坑数据查看 (Open-pit Data)',
-          stockpile: '堆场数据查看 (Stockpile Data)',
-          transfer: '二次转运数据查看 (Secondary Transfer Data)',
-          breakdown: '故障车辆数据查看 (Breakdown Data)',
-          parking: '押矿车辆数据查看 (Parking Data)'
-        };
-        this.showDataView(storeKey, headersMap[storeKey], titlesMap[storeKey]);
-      }
+      const headersMap = {
+        openpit: this.getOpenPitHeaders(),
+        stockpile: this.getStockpileHeaders(),
+        transfer: this.getTransferHeaders(),
+        breakdown: this.getBreakdownHeaders(),
+        parking: this.getParkingHeaders()
+      };
+      const titlesMap = {
+        openpit: '采坑数据查看 (Open-pit Data)',
+        stockpile: '堆场数据查看 (Stockpile Data)',
+        transfer: '二次转运数据查看 (Secondary Transfer Data)',
+        breakdown: '故障车辆数据查看 (Breakdown Data)',
+        parking: '押矿车辆数据查看 (Parking Data)'
+      };
+      this.showDataView(storeKey, headersMap[storeKey], titlesMap[storeKey]);
     });
   },
 
@@ -1253,327 +1285,6 @@ const App = {
       ' / 故障' + (counts.breakdown || 0) +
       ' / 押矿' + (counts.parking || 0) + ')' +
       '<br><span class="en">Storage: ' + storageText + ' · ' + persistText + '</span>';
-  },
-
-  // ==================== Main Screen Data Management ====================
-  getHeadersByKey(key) {
-    const map = {
-      openpit: this.getOpenPitHeaders(),
-      stockpile: this.getStockpileHeaders(),
-      transfer: this.getTransferHeaders(),
-      breakdown: this.getBreakdownHeaders(),
-      parking: this.getParkingHeaders()
-    };
-    return map[key] || [];
-  },
-
-  /**
-   * Render a data table as HTML string.
-   * Uses App._tempImages array for photo references to avoid
-   * very long base64 strings in onclick attributes.
-   */
-  renderDataTable(records, headers, storeKey) {
-    if (!records || records.length === 0) {
-      return '<p class="empty-msg">暂无数据 (No data)</p>';
-    }
-    App._tempImages = [];
-    let html = '<table class="data-table"><thead><tr>';
-    html += '<th>#</th>';
-    headers.forEach(h => { html += `<th>${h.label}</th>`; });
-    html += '<th>操作<br><span class="en">Action</span></th>';
-    html += '</tr></thead><tbody>';
-    records.forEach((r, i) => {
-      html += `<tr>`;
-      html += `<td>${i + 1}</td>`;
-      headers.forEach(h => {
-        let val = r[h.key];
-        if (h.key === 'photo' || h.key === 'breakdownPhoto' || h.key === 'newVehiclePhoto' || h.key === 'parkingPhoto') {
-          if (val) {
-            const imgIdx = App._tempImages.length;
-            App._tempImages.push(val);
-            html += `<td class="td-photo"><img src="${val}" onclick="App.showFullImage(${imgIdx})" alt="photo"></td>`;
-          } else {
-            html += `<td>-</td>`;
-          }
-        } else if (h.key === 'timestamp') {
-          html += `<td>${val ? new Date(val).toLocaleString('zh-CN') : ''}</td>`;
-        } else {
-          html += `<td>${Utils.escapeHtml(val)}</td>`;
-        }
-      });
-      html += `<td class="td-actions"><button class="btn-delete-row" onclick="App.deleteRecord('${storeKey}', ${r.id})">删除<br><span class="en">Del</span></button></td>`;
-      html += `</tr>`;
-    });
-    html += '</tbody></table>';
-    return html;
-  },
-
-  bindMainDataManagement() {
-    // ====== Data View ======
-    document.getElementById('btn-main-dataview').addEventListener('click', () => {
-      this.showMainDataView();
-    });
-    document.getElementById('main-dv-close').addEventListener('click', () => {
-      document.getElementById('main-dataview-modal').classList.add('hidden');
-    });
-    document.getElementById('main-dv-query').addEventListener('click', () => {
-      this.saveMainFilterSelections('dv');
-      this.loadMainDataView();
-    });
-    // Chip toggle for data view sites
-    document.querySelectorAll('#main-dv-sites .chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        chip.classList.toggle('active');
-      });
-    });
-
-    // ====== Export ======
-    document.getElementById('btn-main-export').addEventListener('click', () => {
-      this.showMainExport();
-    });
-    document.getElementById('main-exp-close').addEventListener('click', () => {
-      document.getElementById('main-export-modal').classList.add('hidden');
-    });
-    document.getElementById('main-exp-excel').addEventListener('click', () => {
-      this.saveMainFilterSelections('exp');
-      this.doMainExport('excel');
-    });
-    document.getElementById('main-exp-png').addEventListener('click', () => {
-      this.saveMainFilterSelections('exp');
-      this.doMainExport('png');
-    });
-    // Chip toggle for export sites
-    document.querySelectorAll('#main-exp-sites .chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        chip.classList.toggle('active');
-      });
-    });
-
-    // ====== Delete ======
-    document.getElementById('btn-main-delete').addEventListener('click', () => {
-      document.getElementById('main-delete-modal').classList.remove('hidden');
-    });
-    document.getElementById('main-del-close').addEventListener('click', () => {
-      document.getElementById('main-delete-modal').classList.add('hidden');
-    });
-    document.getElementById('main-del-single').addEventListener('click', () => {
-      document.getElementById('main-delete-modal').classList.add('hidden');
-      const category = document.getElementById('main-del-category').value;
-      if (category === 'all') {
-        Utils.toast('请选择具体类别<br><span class="en">Please select a specific category</span>', 'error');
-        return;
-      }
-      // Open main data view with only the selected category active
-      this.setMainDvSites([category]);
-      this.setMainDvDates(null);
-      this.showMainDataView();
-    });
-    document.getElementById('main-del-category-all').addEventListener('click', () => {
-      document.getElementById('main-delete-modal').classList.add('hidden');
-      const category = document.getElementById('main-del-category').value;
-      if (category === 'all') {
-        Utils.toast('请选择具体类别<br><span class="en">Please select a specific category</span>', 'error');
-        return;
-      }
-      const labelMap = {
-        openpit: '采坑', stockpile: '堆场', transfer: '二次转运', breakdown: '故障车辆', parking: '押矿车辆'
-      };
-      this.showPasswordModal(async () => {
-        await DB.clear(DB.STORES[category]);
-        Utils.toast(labelMap[category] + '数据已删除!<br><span class="en">Category data deleted!</span>', 'success');
-        this.updateStorageInfo();
-      });
-    });
-    document.getElementById('main-del-all').addEventListener('click', () => {
-      document.getElementById('main-delete-modal').classList.add('hidden');
-      this.showPasswordModal(async () => {
-        await DB.clear(DB.STORES.openpit);
-        await DB.clear(DB.STORES.stockpile);
-        await DB.clear(DB.STORES.transfer);
-        await DB.clear(DB.STORES.breakdown);
-        await DB.clear(DB.STORES.parking);
-        Utils.toast('所有数据已删除!<br><span class="en">All data deleted!</span>', 'success');
-        this.updateStorageInfo();
-      });
-    });
-  },
-
-  async showMainDataView() {
-    this.state.dataViewSource = 'main';
-    document.getElementById('main-dataview-modal').classList.remove('hidden');
-    await this.loadAvailableDates('main-dv-dates');
-    await this.restoreMainFilterSelections('dv');
-    this.loadMainDataView();
-  },
-
-  async showMainExport() {
-    document.getElementById('main-export-modal').classList.remove('hidden');
-    await this.loadAvailableDates('main-exp-dates');
-    await this.restoreMainFilterSelections('exp');
-  },
-
-  getSelectedSites(containerId) {
-    return Array.from(document.querySelectorAll('#' + containerId + ' .chip.active')).map(c => c.dataset.value);
-  },
-
-  getSelectedDates(containerId) {
-    return CalendarPicker.getSelectedDates(containerId);
-  },
-
-  async loadAvailableDates(containerId) {
-    const dateSet = new Set();
-    const stores = [DB.STORES.openpit, DB.STORES.stockpile, DB.STORES.transfer, DB.STORES.breakdown, DB.STORES.parking];
-    for (const store of stores) {
-      const records = await DB.getAll(store);
-      records.forEach(r => {
-        const d = r.date || r.breakdownDate;
-        if (d) dateSet.add(d);
-      });
-    }
-    CalendarPicker.init(containerId, Array.from(dateSet));
-  },
-
-  setMainDvSites(sites) {
-    document.querySelectorAll('#main-dv-sites .chip').forEach(c => {
-      c.classList.toggle('active', sites.includes(c.dataset.value));
-    });
-  },
-
-  setMainDvDates(dates) {
-    CalendarPicker.setSelectedDates('main-dv-dates', dates);
-  },
-
-  async saveMainFilterSelections(prefix) {
-    const sitesContainer = prefix === 'dv' ? 'main-dv-sites' : 'main-exp-sites';
-    const datesContainer = prefix === 'dv' ? 'main-dv-dates' : 'main-exp-dates';
-    const sites = this.getSelectedSites(sitesContainer);
-    const dates = this.getSelectedDates(datesContainer);
-    await DB.setSetting({ id: 'defaults_mainFilter_' + prefix, sites, dates });
-  },
-
-  async restoreMainFilterSelections(prefix) {
-    const sitesContainer = prefix === 'dv' ? 'main-dv-sites' : 'main-exp-sites';
-    const datesContainer = prefix === 'dv' ? 'main-dv-dates' : 'main-exp-dates';
-    const saved = await DB.getSetting('defaults_mainFilter_' + prefix);
-    if (saved && saved.sites) {
-      document.querySelectorAll('#' + sitesContainer + ' .chip').forEach(c => {
-        c.classList.toggle('active', saved.sites.includes(c.dataset.value));
-      });
-    }
-    if (saved && saved.dates !== undefined) {
-      CalendarPicker.setSelectedDates(datesContainer, saved.dates);
-    }
-  },
-
-  async loadMainDataView() {
-    const sites = this.getSelectedSites('main-dv-sites');
-    const filterDates = this.getSelectedDates('main-dv-dates');
-    const content = document.getElementById('main-dv-content');
-    App._tempImages = [];
-
-    if (sites.length === 0) {
-      content.innerHTML = '<p class="empty-msg">请选择工作区域<br><span class="en">Please select working site</span></p>';
-      return;
-    }
-
-    const catLabels = {
-      openpit: '采坑 (Open-pit)', stockpile: '堆场 (Stockpile)', transfer: '二次转运 (Secondary Transfer)',
-      breakdown: '故障车辆 (Breakdown)', parking: '押矿车辆 (Parking)'
-    };
-
-    let html = '';
-    for (const key of sites) {
-      let records = await DB.getAll(DB.STORES[key]);
-      if (filterDates) records = records.filter(r => {
-        const d = r.date || r.breakdownDate;
-        return d && filterDates.includes(d);
-      });
-      records.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      const latest = sites.length > 1 ? records.slice(0, 10) : records;
-      html += '<h4 class="section-title">' + catLabels[key] + ' <span class="count-badge">' + records.length + '</span></h4>';
-      if (latest.length > 0) {
-        html += this.renderDataTable(latest, this.getHeadersByKey(key), key);
-      } else {
-        html += '<p class="empty-msg">暂无数据 (No data)</p>';
-      }
-      html += '<hr class="section-divider">';
-    }
-    content.innerHTML = html || '<p class="empty-msg">暂无数据 (No data)</p>';
-  },
-
-  async doMainExport(type) {
-    const sites = this.getSelectedSites('main-exp-sites');
-    const filterDates = this.getSelectedDates('main-exp-dates');
-    const filterShift = document.getElementById('main-exp-shift').value;
-
-    if (sites.length === 0) {
-      Utils.toast('请选择工作区域<br><span class="en">Please select working site</span>', 'error');
-      return;
-    }
-
-    const labelMap = {
-      openpit: 'Open-pit', stockpile: 'Stockpile', transfer: 'Transfer', breakdown: 'Breakdown', parking: 'Parking'
-    };
-    const titleMap = {
-      openpit: '采坑数据 (Open-pit Data)', stockpile: '堆场数据 (Stockpile Data)',
-      transfer: '二次转运数据 (Secondary Transfer Data)',
-      breakdown: '故障车辆数据 (Breakdown Data)', parking: '押矿车辆数据 (Parking Data)'
-    };
-
-    const sheets = [];
-    let totalRecords = 0;
-    for (const key of sites) {
-      let records = await DB.getAll(DB.STORES[key]);
-      if (filterDates) records = records.filter(r => {
-        const d = r.date || r.breakdownDate;
-        return d && filterDates.includes(d);
-      });
-      if (filterShift) records = records.filter(r => Utils.normalizeShift(r.shift || r.breakdownShift) === filterShift);
-      records.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      totalRecords += records.length;
-      sheets.push({ key: key, name: labelMap[key], records: records, headers: this.getHeadersByKey(key) });
-    }
-
-    if (totalRecords === 0) {
-      Utils.toast('没有数据可导出<br><span class="en">No data to export</span>', 'error');
-      return;
-    }
-
-    if (type === 'excel') {
-      if (sheets.length > 1) {
-        Exporter.toExcelMultiSheet(sheets, 'Export_' + Utils.getTimestampStr());
-      } else {
-        Exporter.toExcel(sheets[0].records, sheets[0].headers, labelMap[sheets[0].key] + '_' + Utils.getTimestampStr());
-      }
-    } else {
-      if (sheets.length === 1) {
-        Exporter.toPNG(sheets[0].records, sheets[0].headers, labelMap[sheets[0].key] + '_' + Utils.getTimestampStr(), titleMap[sheets[0].key]);
-      } else {
-        const allRecords = [];
-        const allHeaders = [
-          { key: 'category', label: 'Category' },
-          { key: 'date', label: 'Shift_Date' },
-          { key: 'shift', label: 'Shift' },
-          { key: 'qrCode', label: 'Tag (QR)' },
-          { key: 'vehicleNo', label: 'Vehicle No.' },
-          { key: 'timestamp', label: 'Timestamp' }
-        ];
-        sheets.forEach(s => {
-          s.records.forEach(r => {
-            allRecords.push({
-              category: s.name,
-              date: r.date || r.breakdownDate || '',
-              shift: r.shift || r.breakdownShift || '',
-              qrCode: r.qrCode || '',
-              vehicleNo: r.vehicleNo || r.breakdownVehicleNo || r.parkingVehicleNo || '',
-              timestamp: r.timestamp || ''
-            });
-          });
-        });
-        Exporter.toPNG(allRecords, allHeaders, 'All_' + Utils.getTimestampStr(), '全部数据 (All Data)');
-      }
-    }
-    Utils.toast('导出成功! 共' + totalRecords + '条<br><span class="en">Exported! ' + totalRecords + ' records</span>', 'success');
   },
 
   // ==================== Update Check ====================
