@@ -121,23 +121,47 @@ const App = {
     if (d.destination) {
       document.getElementById('op-destination').value = d.destination;
     }
-    document.getElementById('op-qr').value = '';
+    // Set QR field based on destination
+    if (d.destination === 'W') {
+      document.getElementById('op-qr').value = 'Waste Rock · No Scan Required';
+      this.state.openpit.qrCode = 'W';
+    } else {
+      document.getElementById('op-qr').value = '';
+      this.state.openpit.qrCode = '';
+    }
     document.getElementById('op-photo-preview').classList.add('hidden');
     document.getElementById('op-photo-preview').src = '';
-    this.state.openpit.qrCode = '';
     this.state.openpit.photo = '';
   },
 
   bindOpenPit() {
-    // Auto-trigger QR scan on destination change
+    // Auto-trigger QR scan on destination change (skip for Waste Rock "W")
     document.getElementById('op-destination').addEventListener('change', () => {
       const dest = document.getElementById('op-destination').value;
       if (!dest) return;
-      this.startQRScan('openpit');
+      if (dest === 'W') {
+        // Waste Rock — no QR scan needed
+        document.getElementById('op-qr').value = 'Waste Rock · No Scan Required';
+        this.state.openpit.qrCode = 'W';
+        // Auto-start camera directly
+        setTimeout(() => this.startCamera('openpit_photo'), 300);
+      } else {
+        // Clear previous "W" marker if switching from Waste Rock
+        if (this.state.openpit.qrCode === 'W') {
+          document.getElementById('op-qr').value = '';
+          this.state.openpit.qrCode = '';
+        }
+        this.startQRScan('openpit');
+      }
     });
 
-    // Manual QR scan button
+    // Manual QR scan button (blocked for Waste Rock)
     document.getElementById('op-scan-qr').addEventListener('click', () => {
+      const dest = document.getElementById('op-destination').value;
+      if (dest === 'W') {
+        Utils.toast('废石无需扫描矿牌<br><span class="en">Waste Rock · No Scan Required</span>', 'info');
+        return;
+      }
       this.startQRScan('openpit');
     });
 
@@ -230,11 +254,17 @@ const App = {
 
     // Clear vehicle no, QR, photo — keep destination as default for next entry
     document.getElementById('op-vehicle').value = '';
-    document.getElementById('op-qr').value = '';
+    const dest = document.getElementById('op-destination').value;
+    if (dest === 'W') {
+      document.getElementById('op-qr').value = 'Waste Rock · No Scan Required';
+      this.state.openpit.qrCode = 'W';
+    } else {
+      document.getElementById('op-qr').value = '';
+      this.state.openpit.qrCode = '';
+    }
     const preview = document.getElementById('op-photo-preview');
     preview.classList.add('hidden');
     preview.src = '';
-    this.state.openpit.qrCode = '';
     this.state.openpit.photo = '';
 
     Utils.toast('数据上传成功!<br><span class="en">Data submitted!</span>', 'success');
