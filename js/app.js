@@ -285,8 +285,6 @@ const App = {
       this.showExportModal();
     });
 
-    document.getElementById('sp-export-hcc').addEventListener('click', () => this.exportStockpileHCC());
-
     document.getElementById('sp-delete').addEventListener('click', () => {
       this.state.deleteStore = DB.STORES.stockpile;
       this.state.deleteScreen = 'stockpile';
@@ -346,10 +344,18 @@ const App = {
   /**
    * Export stockpile data in HCC format:
    * DATE = Shift_Date, equipe = Shift (Day=1, Night=2),
-   * N°CAMION = Vehicle No., HEURE = Timestamp time (H:MM)
+   * N°CAMION = Vehicle No., HEURE = Timestamp time (H:MM),
+   * DESTINATION = Destination
+   * Respects date/shift filters from the Export modal.
    */
   async exportStockpileHCC() {
+    const filterDates = this.getSubExportSelectedDates();
+    const filterShift = document.getElementById('export-shift').value;
+
     let records = await DB.getAll(DB.STORES.stockpile);
+    if (filterDates) records = records.filter(r => r.date && filterDates.includes(r.date));
+    if (filterShift) records = records.filter(r => Utils.normalizeShift(r.shift) === filterShift);
+
     if (records.length === 0) {
       Utils.toast('没有数据可导出<br><span class="en">No data to export</span>', 'error');
       return;
@@ -360,7 +366,8 @@ const App = {
       { key: 'date', label: 'DATE' },
       { key: 'equipe', label: 'equipe' },
       { key: 'vehicleNo', label: 'N°CAMION' },
-      { key: 'heure', label: 'HEURE' }
+      { key: 'heure', label: 'HEURE' },
+      { key: 'destination', label: 'DESTINATION' }
     ];
 
     const hccRecords = records.map(r => {
@@ -373,7 +380,8 @@ const App = {
         date: r.date || '',
         equipe: shiftNorm === 'Day' ? 1 : (shiftNorm === 'Night' ? 2 : ''),
         vehicleNo: r.vehicleNo || '',
-        heure: heure
+        heure: heure,
+        destination: r.destination || ''
       };
     });
 
@@ -996,6 +1004,13 @@ const App = {
   // ==================== Export Modal ====================
   async showExportModal() {
     document.getElementById('export-modal').classList.remove('hidden');
+    // Show HCC export button only for stockpile
+    const hccBtn = document.getElementById('export-hcc-btn');
+    if (this.state.exportContext === 'stockpile') {
+      hccBtn.classList.remove('hidden');
+    } else {
+      hccBtn.classList.add('hidden');
+    }
     await this.loadSubExportDates();
   },
 
@@ -1151,6 +1166,9 @@ const App = {
     });
     document.getElementById('export-png-btn').addEventListener('click', () => {
       this.doExport('png');
+    });
+    document.getElementById('export-hcc-btn').addEventListener('click', () => {
+      this.exportStockpileHCC();
     });
 
     // Update banner refresh
