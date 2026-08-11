@@ -415,7 +415,8 @@ const App = {
       };
     });
 
-    Exporter.toExcel(hccRecords, hccHeaders, 'HCC_Stockpile_' + Utils.getTimestampStr());
+    const person = document.getElementById('person').value.trim() || 'Person';
+    Exporter.toExcel(hccRecords, hccHeaders, person + '_Stockpile_' + Utils.getTimestampStr());
     Utils.toast('HCC导出成功! 共' + hccRecords.length + '条<br><span class="en">HCC Exported! ' + hccRecords.length + ' records</span>', 'success');
   },
 
@@ -1034,12 +1035,16 @@ const App = {
   // ==================== Export Modal ====================
   async showExportModal() {
     document.getElementById('export-modal').classList.remove('hidden');
-    // Show HCC export button only for stockpile
+    // Stockpile: show PNG + HCC only (hide Excel)
+    // Other screens: show Excel + PNG (hide HCC)
     const hccBtn = document.getElementById('export-hcc-btn');
+    const excelBtn = document.getElementById('export-excel-btn');
     if (this.state.exportContext === 'stockpile') {
       hccBtn.classList.remove('hidden');
+      excelBtn.classList.add('hidden');
     } else {
       hccBtn.classList.add('hidden');
+      excelBtn.classList.remove('hidden');
     }
     await this.loadSubExportDates();
   },
@@ -1104,7 +1109,13 @@ const App = {
     }
 
     const headers = headersMap[ctx];
-    const filename = labelMap[ctx] + '_' + Utils.getTimestampStr();
+    let filename;
+    if (ctx === 'stockpile') {
+      const person = document.getElementById('person').value.trim() || 'Person';
+      filename = person + '_Stockpile_' + Utils.getTimestampStr();
+    } else {
+      filename = labelMap[ctx] + '_' + Utils.getTimestampStr();
+    }
     const title = titleMap[ctx];
 
     if (type === 'excel') {
