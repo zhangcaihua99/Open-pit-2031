@@ -397,7 +397,8 @@ const App = {
       { key: 'equipe', label: 'equipe' },
       { key: 'vehicleNo', label: 'N°CAMION' },
       { key: 'heure', label: 'HEURE' },
-      { key: 'destination', label: 'DESTINATION' }
+      { key: 'destination', label: 'DESTINATION' },
+      { key: 'qrCode', label: '矿牌' }
     ];
 
     const hccRecords = records.map(r => {
@@ -411,7 +412,8 @@ const App = {
         equipe: shiftNorm === 'Day' ? 1 : (shiftNorm === 'Night' ? 2 : ''),
         vehicleNo: r.vehicleNo || '',
         heure: heure,
-        destination: r.destination || ''
+        destination: r.destination || '',
+        qrCode: r.qrCode || ''
       };
     });
 
