@@ -398,7 +398,7 @@ const App = {
       { key: 'vehicleNo', label: 'N°CAMION' },
       { key: 'heure', label: 'HEURE' },
       { key: 'destination', label: 'DESTINATION' },
-      { key: 'qrCode', label: '矿牌' }
+      { key: 'qrCode', label: 'Tag (QR)' }
     ];
 
     const hccRecords = records.map(r => {
