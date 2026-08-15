@@ -393,6 +393,7 @@ const App = {
     records.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     const hccHeaders = [
+      { key: 'person', label: 'Person' },
       { key: 'date', label: 'DATE' },
       { key: 'equipe', label: 'equipe' },
       { key: 'vehicleNo', label: 'N°CAMION' },
@@ -408,6 +409,7 @@ const App = {
         : '';
       const shiftNorm = Utils.normalizeShift(r.shift);
       return {
+        person: r.person || '',
         date: r.date || '',
         equipe: shiftNorm === 'Day' ? 1 : (shiftNorm === 'Night' ? 2 : ''),
         vehicleNo: r.vehicleNo || '',
