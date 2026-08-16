@@ -144,7 +144,7 @@
       </div>
       <div class="form-group">
         <label>车辆编号 (Vehicle No.)</label>
-        <input type="text" id="op-vehicle" placeholder="必填 / Required">
+        <input type="text" id="op-vehicle" class="vehicle-input" readonly placeholder="点击输入 / Tap to input">
       </div>
     </div>
     <div class="form-row">
@@ -269,7 +269,7 @@
     <div class="form-row">
       <div class="form-group">
         <label>车辆编号 (Vehicle No.)</label>
-        <input type="text" id="sp-vehicle" placeholder="必填 / Required">
+        <input type="text" id="sp-vehicle" class="vehicle-input" readonly placeholder="点击输入 / Tap to input">
       </div>
       <div class="form-group">
         <label>矿岩去向 (Destination)</label>
@@ -356,7 +356,7 @@
     <div class="form-row">
       <div class="form-group">
         <label>车辆编号 (Vehicle No.)</label>
-        <input type="text" id="tr-vehicle" placeholder="必填 / Required">
+        <input type="text" id="tr-vehicle" class="vehicle-input" readonly placeholder="点击输入 / Tap to input">
       </div>
     </div>
 
@@ -416,7 +416,7 @@
       </div>
       <div class="form-group">
         <label>故障车编号 (Breakdown Vehicle No.)</label>
-        <input type="text" id="bd-vehicle" placeholder="输入故障车编号">
+        <input type="text" id="bd-vehicle" class="vehicle-input" readonly placeholder="点击输入 / Tap to input">
       </div>
       <div class="form-group">
         <label>故障车照片 (Breakdown Vehicle Photo)</label>
@@ -448,7 +448,7 @@
       </div>
       <div class="form-group">
         <label>新车编号 (New Vehicle No.)</label>
-        <input type="text" id="bd-new-vehicle" placeholder="输入新车编号">
+        <input type="text" id="bd-new-vehicle" class="vehicle-input" readonly placeholder="点击输入 / Tap to input">
       </div>
       <div class="form-group">
         <label>新车照片 (New Vehicle Photo)</label>
@@ -491,7 +491,7 @@
       </div>
       <div class="form-group">
         <label>押矿车辆编号 (Parking Vehicle No.)</label>
-        <input type="text" id="pk-vehicle" placeholder="输入押矿车辆编号">
+        <input type="text" id="pk-vehicle" class="vehicle-input" readonly placeholder="点击输入 / Tap to input">
       </div>
       <div class="form-group">
         <label>押矿车辆照片 (Parking Vehicle Photo)</label>
@@ -561,6 +561,31 @@
     </div>
     <video id="camera-video" autoplay playsinline></video>
     <button class="btn btn-primary btn-full" id="camera-capture">拍照<br><span class="en">(Camera)</span></button>
+  </div>
+</div>
+
+<!-- ====== Numeric Keypad Modal ====== -->
+<div id="numpad-modal" class="modal hidden">
+  <div class="modal-content modal-sm">
+    <div class="modal-header">
+      <h2 id="numpad-title">车辆编号<br><span class="en">(Vehicle No.)</span></h2>
+      <button class="btn-icon btn-close" id="numpad-close">&#10005;</button>
+    </div>
+    <div class="numpad-display" id="numpad-display"></div>
+    <div class="numpad-grid">
+      <button class="numpad-btn" data-key="1">1</button>
+      <button class="numpad-btn" data-key="2">2</button>
+      <button class="numpad-btn" data-key="3">3</button>
+      <button class="numpad-btn" data-key="4">4</button>
+      <button class="numpad-btn" data-key="5">5</button>
+      <button class="numpad-btn" data-key="6">6</button>
+      <button class="numpad-btn" data-key="7">7</button>
+      <button class="numpad-btn" data-key="8">8</button>
+      <button class="numpad-btn" data-key="9">9</button>
+      <button class="numpad-btn numpad-del" data-key="del">&#9003;</button>
+      <button class="numpad-btn" data-key="0">0</button>
+      <button class="numpad-btn numpad-done" data-key="done">&#10003;</button>
+    </div>
   </div>
 </div>
 

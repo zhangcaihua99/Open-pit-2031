@@ -9,6 +9,8 @@ const App = {
     deleteStore: null,
     deleteScreen: null,
     exportContext: null,
+    numpadTarget: null,
+    numpadOriginalValue: '',
     // Temporary form data
     openpit: { qrCode: '', photo: '' },
     stockpile: { qrCode: '', photo: '' },
@@ -26,6 +28,7 @@ const App = {
     this.bindBreakdown();
     this.bindParking();
     this.bindModals();
+    this.bindNumpad();
     this.bindExportTab();
     this.bindBackupRestore();
     this.bindUpdateCheck();
@@ -1231,6 +1234,79 @@ const App = {
     document.getElementById('password-input').value = '';
     document.getElementById('password-modal').classList.remove('hidden');
     setTimeout(() => document.getElementById('password-input').focus(), 100);
+  },
+
+  // ==================== Numeric Keypad ====================
+  bindNumpad() {
+    // All vehicle number inputs open the numpad when clicked
+    const vehicleInputs = ['op-vehicle', 'sp-vehicle', 'tr-vehicle', 'bd-vehicle', 'bd-new-vehicle', 'pk-vehicle'];
+    vehicleInputs.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('click', () => {
+        this.openNumpad(id);
+      });
+    });
+
+    // Close button
+    document.getElementById('numpad-close').addEventListener('click', () => {
+      this.closeNumpad();
+    });
+
+    // Digit buttons
+    document.querySelectorAll('.numpad-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.numpadInput(btn.getAttribute('data-key'));
+      });
+    });
+  },
+
+  openNumpad(inputId) {
+    const titleMap = {
+      'op-vehicle': '\u8f66\u8f86\u7f16\u53f7<br><span class="en">(Vehicle No.)</span>',
+      'sp-vehicle': '\u8f66\u8f86\u7f16\u53f7<br><span class="en">(Vehicle No.)</span>',
+      'tr-vehicle': '\u8f66\u8f86\u7f16\u53f7<br><span class="en">(Vehicle No.)</span>',
+      'bd-vehicle': '\u6545\u969c\u8f66\u7f16\u53f7<br><span class="en">(Breakdown Vehicle No.)</span>',
+      'bd-new-vehicle': '\u65b0\u8f66\u7f16\u53f7<br><span class="en">(New Vehicle No.)</span>',
+      'pk-vehicle': '\u62bc\u77ff\u8f66\u8f86\u7f16\u53f7<br><span class="en">(Parking Vehicle No.)</span>'
+    };
+    this.state.numpadTarget = inputId;
+    const input = document.getElementById(inputId);
+    this.state.numpadOriginalValue = input.value;
+    document.getElementById('numpad-title').innerHTML = titleMap[inputId] || '\u8f66\u8f86\u7f16\u53f7<br><span class="en">(Vehicle No.)</span>';
+    document.getElementById('numpad-display').textContent = input.value;
+    document.getElementById('numpad-modal').classList.remove('hidden');
+  },
+
+  closeNumpad() {
+    document.getElementById('numpad-modal').classList.add('hidden');
+    // Dispatch change event if value changed (triggers camera for bd/pk vehicle fields)
+    const inputId = this.state.numpadTarget;
+    if (inputId) {
+      const input = document.getElementById(inputId);
+      if (input.value !== this.state.numpadOriginalValue) {
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+    this.state.numpadTarget = null;
+    this.state.numpadOriginalValue = '';
+  },
+
+  numpadInput(key) {
+    const inputId = this.state.numpadTarget;
+    if (!inputId) return;
+    const input = document.getElementById(inputId);
+    const display = document.getElementById('numpad-display');
+
+    if (key === 'del') {
+      input.value = input.value.slice(0, -1);
+    } else if (key === 'done') {
+      this.closeNumpad();
+      return;
+    } else {
+      input.value += key;
+    }
+    display.textContent = input.value;
   },
 
   // ==================== Backup & Restore ====================

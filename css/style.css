@@ -758,6 +758,86 @@ textarea::placeholder {
   opacity: 0.7;
 }
 
+/* ====== Vehicle Input (readonly, opens numpad) ====== */
+.vehicle-input {
+  background: #fff;
+  cursor: pointer;
+  border-color: var(--primary);
+  color: var(--text);
+}
+
+.vehicle-input::placeholder {
+  color: var(--primary);
+  opacity: 0.6;
+}
+
+/* ====== Numeric Keypad ====== */
+.numpad-display {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  min-height: 48px;
+  padding: 12px;
+  background: var(--primary-light);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  letter-spacing: 4px;
+  color: var(--primary-dark);
+  word-break: break-all;
+}
+
+.numpad-display:empty::before {
+  content: '—';
+  color: var(--text-secondary);
+  opacity: 0.4;
+  letter-spacing: 0;
+}
+
+.numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.numpad-btn {
+  padding: 18px 0;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #f5f5f5;
+  color: var(--text);
+  transition: background 0.1s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.numpad-btn:active {
+  transform: scale(0.93);
+  background: var(--primary-light);
+}
+
+.numpad-del {
+  background: #ffe0e0;
+  color: var(--danger);
+  font-size: 22px;
+}
+
+.numpad-del:active {
+  background: #ffcdd2;
+}
+
+.numpad-done {
+  background: var(--success);
+  color: #fff;
+}
+
+.numpad-done:active {
+  background: #1b5e20;
+}
+
 /* ====== Responsive ====== */
 @media (max-width: 400px) {
   .form-row {
