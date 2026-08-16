@@ -132,14 +132,45 @@ const App = {
       document.getElementById('op-qr').value = '';
       this.state.openpit.qrCode = '';
     }
+    // If saved grade is Waste Rock (W), lock Mineral Type & Destination to "W"
+    if (d.grade === 'W') {
+      this.lockWasteRockFields();
+    }
     document.getElementById('op-photo-preview').classList.add('hidden');
     document.getElementById('op-photo-preview').src = '';
     this.state.openpit.photo = '';
   },
 
   bindOpenPit() {
+    // Grade change: when Waste Rock (W), auto-lock Mineral Type & Destination to "W"
+    document.getElementById('op-grade').addEventListener('change', () => {
+      const grade = document.getElementById('op-grade').value;
+      if (grade === 'W') {
+        this.lockWasteRockFields();
+        // Auto-start camera directly (same as destination W)
+        setTimeout(() => this.startCamera('openpit_photo'), 300);
+      } else {
+        this.unlockWasteRockFields();
+      }
+    });
+
+    // Block Mineral Type change while Grade is Waste Rock (W)
+    document.getElementById('op-mineral-type').addEventListener('change', (e) => {
+      if (document.getElementById('op-grade').value === 'W') {
+        e.target.value = 'W';
+        Utils.toast('矿石品级（Grade）为废石(W)<br><span class="en">Grade is Waste Rock (W)</span>', 'info');
+        return;
+      }
+    });
+
     // Auto-trigger QR scan on destination change (skip for Waste Rock "W")
-    document.getElementById('op-destination').addEventListener('change', () => {
+    document.getElementById('op-destination').addEventListener('change', (e) => {
+      // Block destination change while Grade is Waste Rock (W)
+      if (document.getElementById('op-grade').value === 'W') {
+        e.target.value = 'W';
+        Utils.toast('矿石品级（Grade）为废石(W)<br><span class="en">Grade is Waste Rock (W)</span>', 'info');
+        return;
+      }
       const dest = document.getElementById('op-destination').value;
       if (!dest) return;
       if (dest === 'W') {
@@ -193,6 +224,44 @@ const App = {
       this.state.deleteScreen = 'openpit';
       this.showDeleteOptions();
     });
+  },
+
+  /**
+   * Waste Rock lock: when Grade is "W", force Mineral Type & Destination to "W".
+   * Remembers previous values so they can be restored when Grade changes away.
+   */
+  lockWasteRockFields() {
+    const mineralEl = document.getElementById('op-mineral-type');
+    const destEl = document.getElementById('op-destination');
+    // Remember previous values (only once, on first lock)
+    if (this.state.openpit._wasteLocked !== true) {
+      this.state.openpit._prevMineralType = mineralEl.value;
+      this.state.openpit._prevDestination = destEl.value;
+    }
+    mineralEl.value = 'W';
+    destEl.value = 'W';
+    // Destination is W — apply Waste Rock QR behavior
+    document.getElementById('op-qr').value = 'Waste Rock · No Scan Required';
+    this.state.openpit.qrCode = 'W';
+    this.state.openpit._wasteLocked = true;
+  },
+
+  /**
+   * Release the Waste Rock lock: restore previous Mineral Type & Destination values.
+   */
+  unlockWasteRockFields() {
+    const mineralEl = document.getElementById('op-mineral-type');
+    const destEl = document.getElementById('op-destination');
+    mineralEl.value = this.state.openpit._prevMineralType || '';
+    destEl.value = this.state.openpit._prevDestination || '';
+    // If restored destination is no longer W, clear the Waste Rock QR marker
+    if (destEl.value !== 'W' && this.state.openpit.qrCode === 'W') {
+      document.getElementById('op-qr').value = '';
+      this.state.openpit.qrCode = '';
+    }
+    this.state.openpit._wasteLocked = false;
+    this.state.openpit._prevMineralType = '';
+    this.state.openpit._prevDestination = '';
   },
 
   getOpenPitHeaders() {
