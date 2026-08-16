@@ -119,12 +119,16 @@
   <div class="card">
     <div class="form-row">
       <div class="form-group">
-        <label>班次_日期 (Shift_Date)</label>
-        <input type="text" id="op-shift-date" readonly>
+        <label>日期 (Date)</label>
+        <input type="date" id="op-shift-date">
       </div>
       <div class="form-group">
         <label>班次 (Shift)</label>
-        <input type="text" id="op-shift" readonly>
+        <select id="op-shift">
+          <option value="">-- 选择 --</option>
+          <option value="Day">白班 (Day)</option>
+          <option value="Night">夜班 (Night)</option>
+        </select>
       </div>
     </div>
     <div class="form-row">
@@ -258,12 +262,16 @@
   <div class="card">
     <div class="form-row">
       <div class="form-group">
-        <label>班次_日期 (Shift_Date)</label>
-        <input type="text" id="sp-shift-date" readonly>
+        <label>日期 (Date)</label>
+        <input type="date" id="sp-shift-date">
       </div>
       <div class="form-group">
         <label>班次 (Shift)</label>
-        <input type="text" id="sp-shift" readonly>
+        <select id="sp-shift">
+          <option value="">-- 选择 --</option>
+          <option value="Day">白班 (Day)</option>
+          <option value="Night">夜班 (Night)</option>
+        </select>
       </div>
     </div>
     <div class="form-row">
@@ -323,12 +331,16 @@
   <div class="card">
     <div class="form-row">
       <div class="form-group">
-        <label>班次_日期 (Shift_Date)</label>
-        <input type="text" id="tr-shift-date" readonly>
+        <label>日期 (Date)</label>
+        <input type="date" id="tr-shift-date">
       </div>
       <div class="form-group">
         <label>班次 (Shift)</label>
-        <input type="text" id="tr-shift" readonly>
+        <select id="tr-shift">
+          <option value="">-- 选择 --</option>
+          <option value="Day">白班 (Day)</option>
+          <option value="Night">夜班 (Night)</option>
+        </select>
       </div>
     </div>
     <div class="form-row">
@@ -521,7 +533,7 @@
         </select>
       </div>
       <div class="form-group">
-      <label>班次_日期 (Shift_Date)</label>
+      <label>日期 (Date)</label>
       <div id="bd-export-dates"></div>
       </div>
       <div class="form-group">
@@ -632,7 +644,7 @@
       <button class="btn-icon btn-close" id="export-close">&#10005;</button>
     </div>
     <div class="form-group">
-      <label>班次_日期 (Shift_Date)</label>
+      <label>日期 (Date)</label>
       <div id="export-dates"></div>
     </div>
     <div class="form-group">

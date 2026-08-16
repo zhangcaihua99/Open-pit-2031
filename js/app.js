@@ -107,11 +107,11 @@ const App = {
 
   // ==================== Open-pit Screen ====================
   async initOpenPitScreen() {
-    // Auto-fill shift date and shift
-    document.getElementById('op-shift-date').value = Utils.getShiftDateStr();
-    document.getElementById('op-shift').value = Utils.getCurrentShift();
-
+    // Load saved date/shift from defaults, fallback to current shift date/shift
     const d = await Utils.loadDefaults('openpit');
+    document.getElementById('op-shift-date').value = d.date || Utils.getShiftDateStr();
+    document.getElementById('op-shift').value = d.shift || Utils.getCurrentShift();
+
     document.getElementById('op-location').value = d.location || '';
     document.getElementById('op-blasting').value = d.blasting || '';
     document.getElementById('op-shovel').value = d.shovel || '';
@@ -197,7 +197,7 @@ const App = {
 
   getOpenPitHeaders() {
     return [
-      { key: 'date', label: 'Shift_Date' },
+      { key: 'date', label: 'Date' },
       { key: 'shift', label: 'Shift' },
       { key: 'person', label: 'Person' },
       { key: 'location', label: 'Location' },
@@ -218,6 +218,8 @@ const App = {
 
   async submitOpenPit() {
     const person = document.getElementById('person').value.trim();
+    const date = document.getElementById('op-shift-date').value;
+    const shift = document.getElementById('op-shift').value;
     const location = document.getElementById('op-location').value.trim();
     const blasting = document.getElementById('op-blasting').value.trim();
     const shovel = document.getElementById('op-shovel').value.trim();
@@ -232,7 +234,8 @@ const App = {
     const photo = this.state.openpit.photo;
 
     const fields = [
-      [person, '录入人员', 'Operator'], [location, '作业平台', 'Location'], [blasting, '爆堆编号', 'Blasting Area'],
+      [person, '录入人员', 'Operator'], [date, '日期', 'Date'], [shift, '班次', 'Shift'],
+      [location, '作业平台', 'Location'], [blasting, '爆堆编号', 'Blasting Area'],
       [shovel, '挖机编号', 'Shovel'], [vehicleNo, '车辆编号', 'Vehicle No.'], [vehicleType, '车辆型号', 'Vehicle Type'],
       [formation, '地层', 'Formation'], [grade, '矿石品级', 'Grade'], [hardness, '硬度', 'Hardness'],
       [mineralType, '矿石类型', 'Mineral Type'], [destination, '矿岩去向', 'Destination'],
@@ -243,8 +246,7 @@ const App = {
     }
 
     const record = {
-      date: Utils.getShiftDateStr(),
-      shift: Utils.getCurrentShift(),
+      date, shift,
       person, location, blasting, shovel, vehicleNo, vehicleType,
       formation, grade, hardness, mineralType, destination,
       qrCode, photo, timestamp: new Date().toISOString()
@@ -252,8 +254,8 @@ const App = {
 
     await DB.add(DB.STORES.openpit, record);
 
-    // Save defaults
-    await Utils.saveDefaults('openpit', { location, blasting, shovel, vehicleType, formation, grade, hardness, mineralType, destination });
+    // Save defaults including date and shift
+    await Utils.saveDefaults('openpit', { date, shift, location, blasting, shovel, vehicleType, formation, grade, hardness, mineralType, destination });
 
     // Clear vehicle no, QR, photo — keep destination as default for next entry
     document.getElementById('op-vehicle').value = '';
@@ -275,11 +277,11 @@ const App = {
 
   // ==================== Stockpile Screen ====================
   async initStockpileScreen() {
-    // Auto-fill shift date and shift
-    document.getElementById('sp-shift-date').value = Utils.getShiftDateStr();
-    document.getElementById('sp-shift').value = Utils.getCurrentShift();
-
+    // Load saved date/shift from defaults, fallback to current shift date/shift
     const d = await Utils.loadDefaults('stockpile');
+    document.getElementById('sp-shift-date').value = d.date || Utils.getShiftDateStr();
+    document.getElementById('sp-shift').value = d.shift || Utils.getCurrentShift();
+
     document.getElementById('sp-vehicle').value = '';
     if (d.destination) document.getElementById('sp-destination').value = d.destination;
     document.getElementById('sp-qr').value = '';
@@ -327,7 +329,7 @@ const App = {
 
   getStockpileHeaders() {
     return [
-      { key: 'date', label: 'Shift_Date' },
+      { key: 'date', label: 'Date' },
       { key: 'shift', label: 'Shift' },
       { key: 'person', label: 'Person' },
       { key: 'vehicleNo', label: 'Vehicle No.' },
@@ -340,13 +342,16 @@ const App = {
 
   async submitStockpile() {
     const person = document.getElementById('person').value.trim();
+    const date = document.getElementById('sp-shift-date').value;
+    const shift = document.getElementById('sp-shift').value;
     const vehicleNo = document.getElementById('sp-vehicle').value.trim();
     const destination = document.getElementById('sp-destination').value;
     const qrCode = this.state.stockpile.qrCode || document.getElementById('sp-qr').value.trim();
     const photo = this.state.stockpile.photo;
 
     const fields = [
-      [person, '录入人员', 'Operator'], [vehicleNo, '车辆编号', 'Vehicle No.'],
+      [person, '录入人员', 'Operator'], [date, '日期', 'Date'], [shift, '班次', 'Shift'],
+      [vehicleNo, '车辆编号', 'Vehicle No.'],
       [destination, '矿岩去向', 'Destination'], [qrCode, '矿牌', 'Tag (QR)'], [photo, '车辆照片', 'Vehicle Photo']
     ];
     for (const [val, zh, en] of fields) {
@@ -354,14 +359,13 @@ const App = {
     }
 
     const record = {
-      date: Utils.getShiftDateStr(),
-      shift: Utils.getCurrentShift(),
+      date, shift,
       person, vehicleNo, destination, qrCode, photo,
       timestamp: new Date().toISOString()
     };
 
     await DB.add(DB.STORES.stockpile, record);
-    await Utils.saveDefaults('stockpile', { destination });
+    await Utils.saveDefaults('stockpile', { date, shift, destination });
 
     document.getElementById('sp-vehicle').value = '';
     document.getElementById('sp-qr').value = '';
@@ -429,11 +433,11 @@ const App = {
 
   // ==================== Transfer Screen ====================
   async initTransferScreen() {
-    // Auto-fill shift date and shift
-    document.getElementById('tr-shift-date').value = Utils.getShiftDateStr();
-    document.getElementById('tr-shift').value = Utils.getCurrentShift();
-
+    // Load saved date/shift from defaults, fallback to current shift date/shift
     const d = await Utils.loadDefaults('transfer');
+    document.getElementById('tr-shift-date').value = d.date || Utils.getShiftDateStr();
+    document.getElementById('tr-shift').value = d.shift || Utils.getCurrentShift();
+
     document.getElementById('tr-vehicle').value = '';
     if (d.origin) document.getElementById('tr-origin').value = d.origin;
     if (d.destination) document.getElementById('tr-destination').value = d.destination;
@@ -482,7 +486,7 @@ const App = {
 
   getTransferHeaders() {
     return [
-      { key: 'date', label: 'Shift_Date' },
+      { key: 'date', label: 'Date' },
       { key: 'shift', label: 'Shift' },
       { key: 'person', label: 'Person' },
       { key: 'origin', label: 'Origin' },
@@ -496,6 +500,8 @@ const App = {
 
   async submitTransfer() {
     const person = document.getElementById('person').value.trim();
+    const date = document.getElementById('tr-shift-date').value;
+    const shift = document.getElementById('tr-shift').value;
     const origin = document.getElementById('tr-origin').value.trim();
     const destination = document.getElementById('tr-destination').value.trim();
     const vehicleNo = document.getElementById('tr-vehicle').value.trim();
@@ -503,7 +509,8 @@ const App = {
     const photo = this.state.transfer.photo;
 
     const fields = [
-      [person, '录入人员', 'Operator'], [origin, '出发地', 'Origin'], [destination, '目的地', 'Destination'],
+      [person, '录入人员', 'Operator'], [date, '日期', 'Date'], [shift, '班次', 'Shift'],
+      [origin, '出发地', 'Origin'], [destination, '目的地', 'Destination'],
       [vehicleNo, '车辆编号', 'Vehicle No.'],
       [qrCode, '矿牌', 'Tag (QR)'], [photo, '车辆照片', 'Vehicle Photo']
     ];
@@ -512,14 +519,13 @@ const App = {
     }
 
     const record = {
-      date: Utils.getShiftDateStr(),
-      shift: Utils.getCurrentShift(),
+      date, shift,
       person, origin, destination, vehicleNo, qrCode, photo,
       timestamp: new Date().toISOString()
     };
 
     await DB.add(DB.STORES.transfer, record);
-    await Utils.saveDefaults('transfer', { origin, destination });
+    await Utils.saveDefaults('transfer', { date, shift, origin, destination });
 
     document.getElementById('tr-vehicle').value = '';
     document.getElementById('tr-qr').value = '';
@@ -533,16 +539,20 @@ const App = {
   },
 
   // ==================== Breakdown Screen ====================
-  initBreakdownScreen() {
-    document.getElementById('bd-date').value = Utils.getShiftDateStr();
-    document.getElementById('pk-date').value = Utils.getShiftDateStr();
+  async initBreakdownScreen() {
+    // Load saved date/shift from defaults, fallback to current shift date/shift
+    const bd = await Utils.loadDefaults('breakdown');
+    const pk = await Utils.loadDefaults('parking');
+    document.getElementById('bd-date').value = bd.date || Utils.getShiftDateStr();
+    if (bd.shift) document.getElementById('bd-shift').value = bd.shift;
+    document.getElementById('pk-date').value = pk.date || Utils.getShiftDateStr();
+    if (pk.shift) document.getElementById('pk-shift').value = pk.shift;
     // Reset form fields
     this.resetBreakdownForm();
     this.resetParkingForm();
   },
 
   resetBreakdownForm() {
-    document.getElementById('bd-shift').value = '';
     document.getElementById('bd-transfer-date').value = '';
     document.getElementById('bd-transfer-shift').value = '';
     document.getElementById('bd-qr').value = '';
@@ -556,7 +566,6 @@ const App = {
   },
 
   resetParkingForm() {
-    document.getElementById('pk-shift').value = '';
     document.getElementById('pk-qr').value = '';
     document.getElementById('pk-vehicle').value = '';
     document.getElementById('pk-photo-preview').classList.add('hidden');
@@ -621,7 +630,7 @@ const App = {
 
   getBreakdownHeaders() {
     return [
-      { key: 'breakdownDate', label: 'Shift_Date' },
+      { key: 'breakdownDate', label: 'Date' },
       { key: 'breakdownShift', label: 'Shift' },
       { key: 'breakdownVehicleNo', label: 'Breakdown Vehicle No.' },
       { key: 'breakdownPhoto', label: 'Breakdown Photo' },
@@ -664,8 +673,12 @@ const App = {
     };
 
     await DB.add(DB.STORES.breakdown, record);
+    // Save date and shift as defaults
+    await Utils.saveDefaults('breakdown', { date: breakdownDate, shift: breakdownShift });
     this.resetBreakdownForm();
-    document.getElementById('bd-date').value = Utils.getShiftDateStr();
+    // Restore date/shift after reset
+    document.getElementById('bd-date').value = breakdownDate;
+    document.getElementById('bd-shift').value = breakdownShift;
     Utils.toast('数据上传成功!<br><span class="en">Data submitted!</span>', 'success');
   },
 
@@ -704,7 +717,7 @@ const App = {
 
   getParkingHeaders() {
     return [
-      { key: 'breakdownDate', label: 'Shift_Date' },
+      { key: 'breakdownDate', label: 'Date' },
       { key: 'breakdownShift', label: 'Shift' },
       { key: 'qrCode', label: 'Tag (QR)' },
       { key: 'parkingVehicleNo', label: 'Parking Vehicle No.' },
@@ -735,8 +748,12 @@ const App = {
     };
 
     await DB.add(DB.STORES.parking, record);
+    // Save date and shift as defaults
+    await Utils.saveDefaults('parking', { date: breakdownDate, shift: breakdownShift });
     this.resetParkingForm();
-    document.getElementById('pk-date').value = Utils.getShiftDateStr();
+    // Restore date/shift after reset
+    document.getElementById('pk-date').value = breakdownDate;
+    document.getElementById('pk-shift').value = breakdownShift;
     Utils.toast('数据上传成功!<br><span class="en">Data submitted!</span>', 'success');
   },
 
@@ -786,7 +803,7 @@ const App = {
 
       headers = [
         { key: 'recordType', label: 'Type' },
-        { key: 'breakdownDate', label: 'Shift_Date' },
+        { key: 'breakdownDate', label: 'Date' },
         { key: 'breakdownShift', label: 'Shift' },
         { key: 'breakdownVehicleNo', label: 'Vehicle No.' },
         { key: 'breakdownPhoto', label: 'Vehicle Photo' },
